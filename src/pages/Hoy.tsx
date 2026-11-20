@@ -112,7 +112,14 @@ export function Hoy() {
         })}
       </div>
 
-      {!ocasion && <p className="mt-10 text-center text-suave">Elige para qué te vas a vestir.</p>}
+      {!ocasion && (
+        <>
+          <p className="mt-10 text-center text-suave">Elige para qué te vas a vestir.</p>
+          <Link to="/historial/nuevo" className="mt-6 block py-2 text-center text-sm font-medium text-acento">
+            ¿Olvidaste registrar otro día? Agrégalo
+          </Link>
+        </>
+      )}
 
       {ocasion && porId && todos && outfits && usosRecientes && (
         <section className="mt-5">
