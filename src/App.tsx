@@ -3,6 +3,7 @@ import { BottomNav } from './components/BottomNav'
 import { AntesDeComprar } from './pages/AntesDeComprar'
 import { Ayuda } from './pages/Ayuda'
 import { Closet } from './pages/Closet'
+import { Cuenta } from './pages/Cuenta'
 import { Historial } from './pages/Historial'
 import { Hoy } from './pages/Hoy'
 import { Mas } from './pages/Mas'
@@ -35,6 +36,7 @@ export default function App() {
         <Route path="/mas/ayuda" element={<Ayuda />} />
         <Route path="/mas/estadisticas" element={<Stats />} />
         <Route path="/mas/historial" element={<Historial />} />
+        <Route path="/mas/cuenta" element={<Cuenta />} />
       </Route>
       <Route path="/closet/nueva" element={<PrendaForm />} />
       <Route path="/closet/:id" element={<PrendaForm />} />

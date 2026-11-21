@@ -30,6 +30,11 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npm test
       - run: npm run build
+        env:
+          # Variables del repositorio (Settings → Secrets and variables → Actions → Variables).
+          # Son públicas a propósito: la seguridad de los datos está en las reglas RLS de Supabase.
+          VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
