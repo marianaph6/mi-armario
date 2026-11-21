@@ -20,5 +20,28 @@ export function nubeSupabase(cliente: SupabaseClient, usuario: string): Nube {
       if (error) throw error
       return data as FilaNube[]
     },
+    async subirFoto(ruta, foto) {
+      const { error } = await cliente.storage.from('fotos').upload(ruta, foto, { contentType: foto.type || 'image/jpeg', upsert: true, cacheControl: '31536000' })
+      if (error) throw error
+    },
+    async fijarFotos(uid, fotoRuta, miniRuta) {
+      const { data, error } = await cliente.from('prendas').update({ foto_path: fotoRuta, miniatura_path: miniRuta }).eq('id', uid).select('id')
+      if (error) throw error
+      return data.length > 0
+    },
+    async bajarFoto(ruta) {
+      const { data, error } = await cliente.storage.from('fotos').download(ruta)
+      if (error) throw error
+      return data
+    },
+    async limpiarFotos(carpeta, conservar) {
+      const { data, error } = await cliente.storage.from('fotos').list(carpeta)
+      if (error) throw error
+      const sobran = data.map((f) => `${carpeta}/${f.name}`).filter((r) => !conservar.includes(r))
+      if (sobran.length) {
+        const { error } = await cliente.storage.from('fotos').remove(sobran)
+        if (error) throw error
+      }
+    },
   }
 }
