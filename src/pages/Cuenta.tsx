@@ -1,6 +1,10 @@
+import { useLiveQuery } from 'dexie-react-hooks'
 import { useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { TABLAS, db, type Sincronizable } from '../db/schema'
+import { hora } from '../lib/fechas'
 import { supabase, useSesion } from '../lib/supabase'
+import { programarSync, useEstadoSync } from '../sync/sincronizacion'
 
 const campo = 'w-full rounded-xl border border-linea bg-crema px-3 py-3 outline-none focus:border-tinta'
 const boton = 'w-full rounded-full bg-acento py-3 font-semibold text-white active:bg-acento-osc disabled:opacity-40'
@@ -101,9 +105,7 @@ export function Cuenta() {
             <p className="text-sm text-suave">Sesión iniciada como</p>
             <p className="font-semibold break-all">{sesion.user.email}</p>
           </div>
-          <p className="rounded-xl bg-acento-claro p-3 text-sm">
-            Muy pronto tus prendas y fotos se sincronizarán solas. Mientras tanto siguen guardadas en este teléfono como siempre.
-          </p>
+          <EstadoNube />
           <button type="button" onClick={() => supabase!.auth.signOut()} className="w-full rounded-full border border-linea py-3 font-semibold active:bg-linea">
             Cerrar sesión
           </button>
@@ -160,5 +162,39 @@ export function Cuenta() {
         </form>
       )}
     </>
+  )
+}
+
+/** Cambios locales que aún no llegan a la nube (incluye eliminaciones). */
+async function contarPendientes() {
+  let n = await db.borrados.count()
+  for (const t of TABLAS) n += await db.table<Sincronizable>(t).filter((r) => (r.cambio ?? 0) > 0).count()
+  return n
+}
+
+function EstadoNube() {
+  const sync = useEstadoSync()
+  const pendientes = useLiveQuery(contarPendientes, []) ?? 0
+  const texto =
+    sync.fase === 'sincronizando'
+      ? 'Sincronizando…'
+      : sync.fase === 'error'
+        ? sync.error
+        : pendientes > 0
+          ? `${pendientes === 1 ? '1 cambio' : `${pendientes} cambios`} por subir.`
+          : sync.ultima
+            ? `Todo guardado en la nube (${hora(sync.ultima)}).`
+            : 'Revisando la nube…'
+  return (
+    <div className="space-y-2 rounded-xl bg-acento-claro p-3 text-sm">
+      <p className="flex items-center gap-2">
+        <span aria-hidden>{sync.fase === 'error' ? '⚠️' : sync.fase === 'sincronizando' || pendientes > 0 ? '🔄' : '☁️'}</span>
+        <span>{texto}</span>
+      </p>
+      <p className="text-suave">Tus prendas, outfits, historial y lista de deseos se sincronizan solos. Las fotos se suben en la próxima actualización.</p>
+      <button type="button" disabled={sync.fase === 'sincronizando'} onClick={() => programarSync(0)} className="font-semibold text-acento disabled:opacity-40">
+        Sincronizar ahora
+      </button>
+    </div>
   )
 }
