@@ -5,7 +5,7 @@ import { Chips } from '../components/Chips'
 import { Colores } from '../components/Colores'
 import { FotoPrenda } from '../components/FotoPrenda'
 import { db, type Categoria, type Ocasion, type Prenda } from '../db/schema'
-import { CATEGORIAS, OCASIONES, categoriaDe, colorDe } from '../logic/catalogo'
+import { CATEGORIAS, OCASIONES, categoriaDe, colorDe, ocasionDe } from '../logic/catalogo'
 import { combinables, parecidas, parejaDe } from '../logic/comprar'
 
 function Fila({ prendas }: { prendas: Prenda[] }) {
@@ -132,7 +132,7 @@ export function AntesDeComprar() {
                 </p>
                 <p className="text-sm text-suave">
                   {categoriaDe(pareja).label}
-                  {ocasion ? ` para ${OCASIONES.find((o) => o.id === ocasion)!.label.toLowerCase()}` : ''} que hace juego por color.
+                  {ocasion ? ` para ${ocasionDe(ocasion).label.toLowerCase()}` : ''} que hace juego por color.
                 </p>
                 {juego.length > 0 && <Fila prendas={juego} />}
               </section>

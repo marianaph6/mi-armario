@@ -6,7 +6,7 @@
 ![React 19](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white)
 ![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white)
 ![PWA](https://img.shields.io/badge/PWA-offline-5a0fc8?logo=pwa&logoColor=white)
-![Local-first](https://img.shields.io/badge/datos-solo%20en%20el%20dispositivo-2e7d32)
+![Local-first](https://img.shields.io/badge/local--first-sync%20con%20Supabase-2e7d32)
 
 **▶ Demo:** https://marianaph6.github.io/mi-armario/ — ábrela en Safari del iPhone y toca *Compartir → Agregar a pantalla de inicio*.
 
@@ -22,11 +22,12 @@ Una app que vive en la pantalla de inicio del teléfono, funciona sin internet y
 
 | Pantalla | Qué hace |
 |---|---|
-| **Hoy** | Elige la ocasión (casa, gym, oficina, salida) y recibe un outfit armado con lo que está limpio y lleva más tiempo sin usarse. Se puede cambiar una prenda, pedir otra opción, guardarlo o registrarlo con *Me lo pongo*. |
-| **Clóset** | Cada prenda con foto, tipo, color, ocasiones y clima. Filtros y estado *limpia / para lavar*. |
+| **Hoy** | Elige la ocasión (casa, gym, oficina, casual, salida, evento, viaje o playa) y recibe un outfit armado con lo que está limpio y lleva más tiempo sin usarse. Se puede cambiar una prenda, pedir otra opción, guardarlo o registrarlo con *Me lo pongo*. |
+| **Clóset** | Cada prenda con foto, tipo (8 categorías y más de 70 subtipos), colores, ocasiones y clima, con filtros por tipo y ocasión. |
+| **Estado de tu ropa** | Cuánto del clóset está disponible y qué está para lavar, arreglar, donar o botar, con un toque para resolver cada caso. Propone donar lo que lleva más de 4 meses sin usarse. |
 | **Outfits** | Combinaciones guardadas y favoritas, sobre todo para el gym. |
 | **Historial** | Lo que te pusiste cada día. Permite registrar días pasados para no perder la traza. |
-| **Antes de comprar** | Indica cuántas prendas parecidas ya tienes y con cuántas combinaría lo que piensas comprar. Incluye lista de deseos. |
+| **Antes de comprar** | Indica cuántas prendas parecidas ya tienes (sin contar las que vas a donar o botar) y con cuántas combinaría lo que piensas comprar. Incluye lista de deseos. |
 | **Estadísticas** | Prendas sin estrenar, olvidadas, las más usadas y cuánto del clóset rotaste en el mes. |
 | **Respaldo** | Exporta e importa un `.zip` con datos y fotos, con aviso si pasan 14 días sin copia. |
 | **Widget** | Un Atajo de iOS abre la app directo en *¿qué me pongo para el gym?* mediante deep links (`#/hoy?ocasion=gym`). |
@@ -35,7 +36,7 @@ Una app que vive en la pantalla de inicio del teléfono, funciona sin internet y
 
 ## Decisiones técnicas
 
-- **Local-first, sin backend.** Todo se guarda en IndexedDB (Dexie): no hay servidor, cuentas ni costos, y la privacidad está garantizada por diseño. La app pide `navigator.storage.persist()` para que Safari no borre los datos.
+- **Local-first con nube opcional.** Todo se guarda primero en IndexedDB (Dexie) y la app funciona sin internet ni cuenta. Con sesión iniciada, un motor propio sincroniza datos y fotos con Supabase (Postgres con RLS por usuario y Storage privado). Ver [src/sync](src/sync).
 - **PWA en lugar de app nativa.** Se instala desde Safari, funciona offline gracias al service worker de Workbox y se actualiza sola. iOS no permite widgets web, así que el "widget" es un Atajo que abre rutas con deep link (por eso se usa `HashRouter`).
 - **Motor de sugerencias por reglas, sin IA.** Es un módulo puro (sin acceso a la base de datos, con el azar y la fecha inyectables), cubierto por pruebas y fácil de ajustar. Detalle abajo.
 - **Fotos livianas.** Se comprimen en el dispositivo (`browser-image-compression`) a 1200 px / ~250 KB, más una miniatura de 400 px para las cuadrículas. 200 prendas ocupan unos 30 MB.
@@ -78,7 +79,7 @@ flowchart LR
 |---|---|
 | UI | React 19, React Router 7, Tailwind CSS 4 |
 | Lenguaje | TypeScript en modo estricto |
-| Datos | Dexie 4 (IndexedDB) + `dexie-react-hooks` |
+| Datos | Dexie 4 (IndexedDB) + `dexie-react-hooks`; Supabase (Auth, Postgres con RLS, Storage) |
 | PWA | `vite-plugin-pwa` (Workbox), manifest e íconos propios |
 | Build | Vite 8 |
 | Pruebas | Vitest |
@@ -103,14 +104,14 @@ Requiere Node 20 o superior.
 ```bash
 npm install
 npm run dev      # servidor local, también accesible desde el celular en la misma Wi-Fi
-npm test         # 13 pruebas del motor de sugerencias y de "antes de comprar"
+npm test         # pruebas de sugerencias, compras, estado de la ropa y sincronización
 npm run build    # versión de producción en dist/
 npm run lint
 ```
 
 ## Despliegue continuo
 
-Cada push a `main` dispara [`publicar.yml`](.github/workflows/publicar.yml): instala dependencias, corre las pruebas, compila y publica en GitHub Pages. Si una prueba falla, no se publica. Los datos de quien usa la app nunca se tocan, porque viven en su dispositivo.
+Cada push a `main` dispara [`publicar.yml`](.github/workflows/publicar.yml): instala dependencias, corre las pruebas, compila y publica en GitHub Pages. Si una prueba falla, no se publica. Publicar no toca los datos de nadie: viven en cada dispositivo y en su cuenta de la nube.
 
 ## Próximos pasos
 

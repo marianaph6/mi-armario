@@ -1,9 +1,10 @@
 import Dexie, { type EntityTable, type Table } from 'dexie'
 
-export type Ocasion = 'casa' | 'gym' | 'oficina' | 'salida'
-export type Categoria = 'superior' | 'inferior' | 'enterizo' | 'calzado' | 'abrigo' | 'accesorio'
+export type Ocasion = 'casa' | 'gym' | 'oficina' | 'casual' | 'salida' | 'evento' | 'viaje' | 'playa'
+export type Categoria = 'superior' | 'inferior' | 'enterizo' | 'calzado' | 'abrigo' | 'bano' | 'pijama' | 'accesorio'
 export type Clima = 'todo' | 'calor' | 'frio'
-export type Estado = 'limpia' | 'lavar'
+/** `limpia` = disponible para usar; los demás la sacan de las sugerencias */
+export type Estado = 'limpia' | 'lavar' | 'arreglar' | 'donar' | 'botar'
 
 /**
  * Campos para sincronizar con la nube (los pone la base sola, ver los hooks al final):

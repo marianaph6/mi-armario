@@ -3,32 +3,60 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Chips } from '../components/Chips'
 import { FotoPrenda } from '../components/FotoPrenda'
-import { marcarTodoLimpio } from '../db/acciones'
-import { db, type Categoria, type Ocasion } from '../db/schema'
-import { CATEGORIAS, OCASIONES, categoriaDe } from '../logic/catalogo'
+import { db, type Categoria, type Ocasion, type Prenda } from '../db/schema'
+import { CATEGORIAS, ESTADOS, OCASIONES, activa, categoriaDe, estadoDe } from '../logic/catalogo'
 
 type FiltroCat = Categoria | 'todas'
-type FiltroExtra = Ocasion | 'lavar'
 
 const OPC_CATEGORIA = [{ id: 'todas' as const, label: 'Todo' }, ...CATEGORIAS]
-const OPC_EXTRA = [...OCASIONES, { id: 'lavar' as const, label: 'Para lavar', emoji: '🧺' }]
+
+/** Resumen del estado del clóset; lleva a la pantalla donde se gestiona. */
+function ResumenEstado({ prendas }: { prendas: Prenda[] }) {
+  const total = prendas.length
+  const cuenta = ESTADOS.map((e) => ({ ...e, n: prendas.filter((p) => p.estado === e.id).length }))
+  const libres = cuenta[0].n
+  const pendientes = cuenta.slice(1).filter((e) => e.n > 0)
+  return (
+    <Link to="/closet/estado" className="mb-4 block rounded-2xl border border-linea bg-papel p-3 active:bg-linea">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm">
+          <span className="font-semibold">{libres}</span> <span className="text-suave">de {total} disponibles</span>
+        </p>
+        <p className="flex shrink-0 items-center gap-2 text-sm text-suave">
+          {pendientes.length === 0
+            ? 'Todo listo'
+            : pendientes.map((e) => (
+                <span key={e.id} aria-label={`${e.n} ${e.corto.toLowerCase()}`}>
+                  {e.emoji} {e.n}
+                </span>
+              ))}
+          <span className="text-lg leading-none">›</span>
+        </p>
+      </div>
+      <div className="mt-2 flex h-1.5 overflow-hidden rounded-full bg-linea">
+        {cuenta.map((e) => (e.n ? <span key={e.id} style={{ width: `${(e.n / total) * 100}%`, background: e.color }} /> : null))}
+      </div>
+    </Link>
+  )
+}
 
 export function Closet() {
   const prendas = useLiveQuery(() => db.prendas.orderBy('creada').reverse().toArray(), [])
   const [cat, setCat] = useState<FiltroCat>('todas')
-  const [extra, setExtra] = useState<FiltroExtra | null>(null)
+  const [ocasion, setOcasion] = useState<Ocasion | null>(null)
 
   const visibles = useMemo(
     () =>
-      (prendas ?? []).filter(
-        (p) =>
-          (cat === 'todas' || p.categoria === cat) &&
-          (extra === null || (extra === 'lavar' ? p.estado === 'lavar' : p.ocasiones.includes(extra))),
-      ),
-    [prendas, cat, extra],
+      (prendas ?? [])
+        .filter((p) => (cat === 'todas' || p.categoria === cat) && (ocasion === null || p.ocasiones.includes(ocasion)))
+        // lo que está de salida (donar o botar) va al final
+        .sort((a, b) => Number(!activa(a)) - Number(!activa(b))),
+    [prendas, cat, ocasion],
   )
 
   const total = prendas?.length ?? 0
+  // solo se muestran los filtros de tipos que existen en el clóset
+  const categorias = OPC_CATEGORIA.filter((c) => c.id === 'todas' || prendas?.some((p) => p.categoria === c.id))
 
   return (
     <>
@@ -54,45 +82,42 @@ export function Closet() {
         </div>
       ) : (
         <>
+          {prendas && <ResumenEstado prendas={prendas} />}
+
           <div className="space-y-2">
-            <Chips opciones={OPC_CATEGORIA} seleccion={[cat]} onToggle={setCat} enFila tamano="sm" />
+            <Chips opciones={categorias} seleccion={[cat]} onToggle={setCat} enFila tamano="sm" />
             <Chips
-              opciones={OPC_EXTRA}
-              seleccion={extra ? [extra] : []}
-              onToggle={(id) => setExtra(extra === id ? null : id)}
+              opciones={OCASIONES}
+              seleccion={ocasion ? [ocasion] : []}
+              onToggle={(id) => setOcasion(ocasion === id ? null : id)}
               enFila
               tamano="sm"
             />
           </div>
 
-          {extra === 'lavar' && visibles.length > 0 && (
-            <button
-              type="button"
-              onClick={() => confirm('¿Marcar todas las prendas como limpias?') && marcarTodoLimpio()}
-              className="mt-3 w-full rounded-full border border-tinta py-2.5 text-sm font-semibold"
-            >
-              ✨ Ya lavé todo
-            </button>
-          )}
-
           {prendas && visibles.length === 0 ? (
             <p className="mt-16 text-center text-suave">No hay prendas con esos filtros.</p>
           ) : (
             <ul className="mt-4 grid grid-cols-3 gap-2">
-              {visibles.map((p) => (
-                <li key={p.id}>
-                  <Link to={`/closet/${p.id}`} className="relative block">
-                    <FotoPrenda
-                      blob={p.miniatura}
-                      alt={p.nombre || p.subtipo || categoriaDe(p.categoria).label}
-                      className="aspect-[3/4] rounded-xl"
-                    />
-                    {p.estado === 'lavar' && (
-                      <span className="absolute top-1.5 right-1.5 rounded-full bg-papel/90 px-1.5 py-0.5 text-xs">🧺</span>
-                    )}
-                  </Link>
-                </li>
-              ))}
+              {visibles.map((p) => {
+                const e = estadoDe(p.estado)
+                return (
+                  <li key={p.id}>
+                    <Link to={`/closet/${p.id}`} className={`relative block ${activa(p) ? '' : 'opacity-50'}`}>
+                      <FotoPrenda
+                        blob={p.miniatura}
+                        alt={p.nombre || p.subtipo || categoriaDe(p.categoria).label}
+                        className="aspect-[3/4] rounded-xl"
+                      />
+                      {p.estado !== 'limpia' && (
+                        <span className="absolute top-1.5 right-1.5 rounded-full bg-papel/90 px-1.5 py-0.5 text-xs" aria-label={e.label} title={e.label}>
+                          {e.emoji}
+                        </span>
+                      )}
+                    </Link>
+                  </li>
+                )
+              })}
             </ul>
           )}
 

@@ -5,13 +5,12 @@ import { Collage } from '../components/Collage'
 import { FotoPrenda } from '../components/FotoPrenda'
 import { Sugerencia } from '../components/Sugerencia'
 import { deshacerUso, registrarUso } from '../db/acciones'
-import { db, type Ocasion, type Outfit } from '../db/schema'
+import { db, type Outfit } from '../db/schema'
 import { DIAS_AVISO, diasSinRespaldo } from '../logic/backup'
 import { haceCuanto, hora, inicioDeHoy } from '../lib/fechas'
 import { prendasDe, usePrendasPorId } from '../lib/usePrendas'
-import { OCASIONES, categoriaDe } from '../logic/catalogo'
+import { ESTADOS, OCASIONES, categoriaDe, ocasionDe } from '../logic/catalogo'
 
-const ocasionDe = (id: Ocasion) => OCASIONES.find((o) => o.id === id)!
 
 export function Hoy() {
   const [params, setParams] = useSearchParams()
@@ -28,8 +27,8 @@ export function Hoy() {
 
   const fecha = new Date().toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' })
 
-  // primero lo que lleva más tiempo sin usarse; al final lo que tiene prendas para lavar
-  const tieneSucias = (o: Outfit) => o.prendaIds.some((id) => porId?.get(id)?.estado === 'lavar')
+  // primero lo que lleva más tiempo sin usarse; al final lo que tiene prendas no disponibles (para lavar, arreglar…)
+  const tieneSucias = (o: Outfit) => o.prendaIds.some((id) => { const p = porId?.get(id); return !!p && p.estado !== 'limpia' })
   const ordenados = [...(outfits ?? [])].sort(
     (a, b) => Number(tieneSucias(a)) - Number(tieneSucias(b)) || (a.ultimoUso?.getTime() ?? 0) - (b.ultimoUso?.getTime() ?? 0),
   )
@@ -131,7 +130,9 @@ export function Hoy() {
               <ul className="space-y-3">
                 {ordenados.map((o) => {
                   const prendas = prendasDe(o.prendaIds, porId)
-                  const sucias = prendas.filter((p) => p.estado === 'lavar').length
+                  const noDisponibles = ESTADOS.slice(1)
+                    .map((e) => ({ e, n: prendas.filter((p) => p.estado === e.id).length }))
+                    .filter((x) => x.n > 0)
                   return (
                     <li key={o.id} className="flex gap-3 rounded-2xl border border-linea bg-papel p-3">
                       <Link to={`/outfits/${o.id}?desde=hoy`} className="w-28 shrink-0">
@@ -145,9 +146,9 @@ export function Hoy() {
                         <p className="text-sm text-suave first-letter:uppercase">
                           {o.ultimoUso ? `Usado ${haceCuanto(o.ultimoUso)}` : 'Sin estrenar'}
                         </p>
-                        {sucias > 0 && (
+                        {noDisponibles.length > 0 && (
                           <p className="mt-0.5 text-sm text-acento-osc">
-                            🧺 {sucias === 1 ? '1 prenda para lavar' : `${sucias} prendas para lavar`}
+                            {noDisponibles.map(({ e, n }) => `${e.emoji} ${n} ${e.corto.toLowerCase()}`).join(' · ')}
                           </p>
                         )}
                         <button

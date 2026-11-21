@@ -105,3 +105,13 @@ drop policy if exists "fotos: solo su carpeta" on storage.objects;
 create policy "fotos: solo su carpeta" on storage.objects for all to authenticated
   using (bucket_id = 'fotos' and (storage.foldername(name))[1] = (select auth.uid())::text)
   with check (bucket_id = 'fotos' and (storage.foldername(name))[1] = (select auth.uid())::text);
+
+-- Si al crear el proyecto se activó "Enable RLS on new tables automatically", Supabase crea la función
+-- public.rls_auto_enable() para su disparador ensure_rls. Solo debe correr al crear tablas, no por la API.
+do $$
+begin
+  if exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'rls_auto_enable') then
+    revoke execute on function public.rls_auto_enable() from public, anon, authenticated;
+  end if;
+end;
+$$;

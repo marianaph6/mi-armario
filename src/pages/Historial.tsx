@@ -4,9 +4,8 @@ import { FotoPrenda } from '../components/FotoPrenda'
 import { deshacerUso } from '../db/acciones'
 import { db, type RegistroUso } from '../db/schema'
 import { prendasDe, usePrendasPorId } from '../lib/usePrendas'
-import { OCASIONES, categoriaDe } from '../logic/catalogo'
+import { categoriaDe, ocasionDe } from '../logic/catalogo'
 
-const ocasionDe = (id: RegistroUso['ocasion']) => OCASIONES.find((o) => o.id === id)!
 
 /** Todo lo que te pusiste, día por día, del más reciente al más antiguo. */
 export function Historial() {

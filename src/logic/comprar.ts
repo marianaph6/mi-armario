@@ -1,5 +1,5 @@
 import type { Categoria, Ocasion } from '../db/schema'
-import { COLORES } from './catalogo'
+import { COLORES, activa } from './catalogo'
 import type { PrendaLogica } from './sugerir'
 
 export interface Candidata {
@@ -22,7 +22,7 @@ export const parejaDe = (c: Categoria) => PAREJA[c]
 export function parecidas<P extends PrendaLogica>(prendas: P[], c: Candidata): P[] {
   const mismoSubtipo = (p: P) => !!c.subtipo && p.subtipo === c.subtipo
   return prendas
-    .filter((p) => p.categoria === c.categoria)
+    .filter((p) => activa(p) && p.categoria === c.categoria)
     .filter((p) => (c.color ? p.colores.includes(c.color) : c.subtipo ? mismoSubtipo(p) : true))
     .sort((a, b) => Number(mismoSubtipo(b)) - Number(mismoSubtipo(a)))
 }
@@ -34,5 +34,5 @@ const combinan = (color: string | undefined, p: PrendaLogica) =>
 export function combinables<P extends PrendaLogica>(prendas: P[], c: Candidata): P[] {
   const pareja = PAREJA[c.categoria]
   if (!pareja) return []
-  return prendas.filter((p) => p.categoria === pareja && (!c.ocasion || p.ocasiones.includes(c.ocasion)) && combinan(c.color, p))
+  return prendas.filter((p) => activa(p) && p.categoria === pareja && (!c.ocasion || p.ocasiones.includes(c.ocasion)) && combinan(c.color, p))
 }

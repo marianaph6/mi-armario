@@ -44,4 +44,14 @@ describe('antes de comprar', () => {
   it('filtra las combinables por ocasión', () => {
     expect(combinables(closet, { categoria: 'superior', color: 'blanco', ocasion: 'salida' }).map((p) => p.id)).toEqual([jeanNegro.id])
   })
+
+  it('lo que vas a donar o botar ya no cuenta como algo que tienes', () => {
+    const saliendo = [prenda('inferior', { subtipo: 'Leggings', estado: 'donar' }), prenda('superior', { estado: 'botar' })]
+    expect(parecidas(saliendo, { categoria: 'inferior', subtipo: 'Leggings' })).toEqual([])
+    expect(combinables(saliendo, { categoria: 'inferior' })).toEqual([])
+    // para arreglar sí sigue siendo tuya
+    const porArreglar = prenda('inferior', { subtipo: 'Leggings', estado: 'arreglar' })
+    expect(parecidas([porArreglar], { categoria: 'inferior', subtipo: 'Leggings' })).toEqual([porArreglar])
+  })
 })
+

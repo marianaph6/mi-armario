@@ -36,7 +36,7 @@ export function Mas() {
 
       <section className="rounded-2xl border border-linea bg-papel p-4">
         <h2 className="font-semibold">Tus datos</h2>
-        <p className="mt-1 text-sm text-suave">Las prendas y fotos se guardan solo en este celular.</p>
+        <p className="mt-1 text-sm text-suave">Las prendas y fotos se guardan en este celular y, si inicias sesión en Tu cuenta, también en tu nube privada.</p>
         <dl className="mt-3 space-y-1 text-sm">
           <div className="flex justify-between">
             <dt className="text-suave">Espacio usado</dt>

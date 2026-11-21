@@ -12,6 +12,10 @@ La nube es opcional: sin estos pasos la app funciona igual, guardando todo en el
    - Para desarrollo local: copia `.env.example` como `.env.local` y pégalas ahí.
    - Para la versión publicada: en GitHub, **Settings → Secrets and variables → Actions → Variables**, crea `SUPABASE_URL` y `SUPABASE_ANON_KEY`.
 
+5. **Seguridad.** Cuando ya tengas tu cuenta:
+   - **Authentication → Sign In / Providers:** desactiva **Allow new users to sign up**, para que nadie más cree cuentas en tu proyecto. En el proveedor **Email**, sube **Minimum password length** a 8.
+   - **Project Settings → API Keys → Legacy:** desactiva las claves antiguas (`anon` y `service_role`); la app usa la clave publishable.
+
 ## Cómo se inicia sesión
 
 Con correo y contraseña. Al crear la cuenta llega un correo para confirmarla, y "Olvidé mi contraseña" envía un enlace para elegir otra. Los enlaces abren Safari: la app detecta el regreso y muestra el aviso correspondiente.

@@ -111,4 +111,28 @@ describe('sugerir', () => {
     const repetidas = r[1].prendaIds.filter((id) => r[0].prendaIds.includes(id))
     expect(repetidas).toHaveLength(1) // solo el único par de tenis
   })
+
+  it('no sugiere prendas para arreglar, donar ni botar', () => {
+    const prendas = [
+      prenda('superior', { estado: 'arreglar' }),
+      prenda('superior', { estado: 'donar' }),
+      prenda('superior', { estado: 'botar' }),
+      prenda('superior'),
+      prenda('inferior'),
+    ]
+    const r = sugerir({ ...base, prendas, cuantas: 10 })
+    expect(r).toHaveLength(1)
+    expect(r[0].prendaIds).toEqual([prendas[3].id, prendas[4].id])
+  })
+
+  it('en la playa un vestido de baño cuenta como outfit completo', () => {
+    const banio = prenda('bano', { ocasiones: ['playa'] })
+    const sandalias = prenda('calzado', { ocasiones: ['playa'] })
+    const r = sugerir({ ...base, ocasion: 'playa', prendas: [banio, sandalias] })
+    expect(r[0].prendaIds.sort()).toEqual([banio.id, sandalias.id].sort())
+    expect(queFalta([banio], 'playa')).toEqual([])
+    // fuera de la playa no se usa como base
+    expect(sugerir({ ...base, ocasion: 'salida', prendas: [prenda('bano', { ocasiones: ['salida'] })] })).toEqual([])
+  })
 })
+

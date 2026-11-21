@@ -6,7 +6,7 @@ import { useObjectUrl } from '../lib/useObjectUrl'
 import { db, type Categoria, type Clima, type Estado, type Ocasion } from '../db/schema'
 import { eliminarPrenda } from '../db/acciones'
 import { prepararFoto } from '../lib/imagen'
-import { CATEGORIAS, CLIMAS, COLORES, OCASIONES } from '../logic/catalogo'
+import { CATEGORIAS, CLIMAS, COLORES, ESTADOS, OCASIONES } from '../logic/catalogo'
 
 function Campo({ titulo, ayuda, children }: { titulo: string; ayuda?: string; children: ReactNode }) {
   return (
@@ -204,12 +204,9 @@ export function PrendaForm() {
         </Campo>
 
         {editId !== undefined && (
-          <Campo titulo="Estado">
+          <Campo titulo="Estado" ayuda="solo las disponibles salen en las sugerencias">
             <Chips
-              opciones={[
-                { id: 'limpia', label: 'Limpia', emoji: '✨' },
-                { id: 'lavar', label: 'Para lavar', emoji: '🧺' },
-              ]}
+              opciones={ESTADOS}
               seleccion={[estado]}
               onToggle={setEstado}
               tamano="sm"

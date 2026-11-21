@@ -1,5 +1,5 @@
 import type { Prenda } from '../db/schema'
-import { CATEGORIAS } from '../logic/catalogo'
+import { CATEGORIAS, estadoDe } from '../logic/catalogo'
 import { FotoPrenda } from './FotoPrenda'
 
 /** Cuadrícula de prendas por categoría para elegir varias con un toque. */
@@ -26,7 +26,11 @@ export function SelectorPrendas({ prendas, seleccion, alternar }: { prendas: Pre
                   {activa && (
                     <span className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-acento text-xs text-white">✓</span>
                   )}
-                  {p.estado === 'lavar' && <span className="absolute bottom-1 left-1 rounded-full bg-papel/90 px-1 text-[10px]">🧺</span>}
+                  {p.estado !== 'limpia' && (
+                    <span className="absolute bottom-1 left-1 rounded-full bg-papel/90 px-1 text-[10px]" aria-label={estadoDe(p.estado).label}>
+                      {estadoDe(p.estado).emoji}
+                    </span>
+                  )}
                 </button>
               </li>
             )
