@@ -18,6 +18,7 @@ export function Mas() {
       <nav className="mb-4 space-y-3">
         {[
           { to: '/mas/comprar', emoji: '🛍️', titulo: 'Antes de comprar', texto: 'Revisa si ya tienes algo parecido y tu lista de deseos.' },
+          { to: '/mas/cuenta', emoji: '☁️', titulo: 'Tu cuenta', texto: 'Guarda tu clóset en la nube y úsalo en otros dispositivos.' },
           { to: '/mas/historial', emoji: '🗓️', titulo: 'Historial', texto: 'Lo que te pusiste cada día. Registra también días pasados.' },
           { to: '/mas/estadisticas', emoji: '📊', titulo: 'Estadísticas', texto: 'Qué usas, qué tienes olvidado y qué sigue sin estrenar.' },
           { to: '/mas/ayuda', emoji: '📲', titulo: 'Instalar y widget', texto: 'Cómo ponerla en tu pantalla de inicio y crear el atajo.' },
