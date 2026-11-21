@@ -6,7 +6,7 @@ import { FotoPrenda } from '../components/FotoPrenda'
 import { SelectorPrendas } from '../components/SelectorPrendas'
 import { db, type Ocasion } from '../db/schema'
 import { prendasDe } from '../lib/usePrendas'
-import { OCASIONES, categoriaDe } from '../logic/catalogo'
+import { OCASIONES, categoriaDe, ocasionDe } from '../logic/catalogo'
 
 const esOcasion = (x: string | null): x is Ocasion => OCASIONES.some((o) => o.id === x)
 
@@ -137,7 +137,7 @@ export function OutfitEditor() {
 
         {ocasion && (ocultas > 0 || verTodo) && (
           <button type="button" onClick={() => setVerTodo(!verTodo)} className="w-full py-2 text-sm font-medium text-acento">
-            {verTodo ? `Ver solo prendas de ${OCASIONES.find((o) => o.id === ocasion)!.label.toLowerCase()}` : `Ver todo el clóset (${ocultas} más)`}
+            {verTodo ? `Ver solo prendas de ${ocasionDe(ocasion).label.toLowerCase()}` : `Ver todo el clóset (${ocultas} más)`}
           </button>
         )}
       </div>

@@ -37,7 +37,7 @@ const disponibles = (prendas: PrendaLogica[], ocasion: Ocasion) =>
 export function queFalta(prendas: PrendaLogica[], ocasion: Ocasion): Categoria[] {
   const d = disponibles(prendas, ocasion)
   const hay = (c: Categoria) => d.some((p) => p.categoria === c)
-  if (hay('enterizo') || (hay('superior') && hay('inferior'))) return []
+  if (hay('enterizo') || (hay('superior') && hay('inferior')) || (ocasion === 'playa' && hay('bano'))) return []
   return (['superior', 'inferior'] as const).filter((c) => !hay(c))
 }
 
@@ -58,9 +58,15 @@ export function sugerir({ prendas, outfits, usos, ocasion, ahora = new Date(), a
   const superiores = grupo('superior')
   const inferiores = grupo('inferior')
   const enterizos = grupo('enterizo')
+  // en la playa, un vestido de baño también es un outfit completo
+  const banos = ocasion === 'playa' ? grupo('bano') : []
   const calzados = ocasion === 'casa' ? [] : grupo('calzado')
 
-  const bases: PrendaLogica[][] = [...superiores.flatMap((s) => inferiores.map((i) => [s, i])), ...enterizos.map((e) => [e])]
+  const bases: PrendaLogica[][] = [
+    ...superiores.flatMap((s) => inferiores.map((i) => [s, i])),
+    ...enterizos.map((e) => [e]),
+    ...banos.map((b) => [b]),
+  ]
   const combos = new Map<string, PrendaLogica[]>()
   for (const base of bases) {
     for (const combo of calzados.length ? calzados.map((c) => [...base, c]) : [base]) {

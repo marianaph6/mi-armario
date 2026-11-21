@@ -1,5 +1,5 @@
 import { inicioDeHoy } from '../lib/fechas'
-import { db, type Categoria, type Ocasion } from './schema'
+import { db, type Categoria, type Estado, type Ocasion } from './schema'
 
 /** Tipos de prenda que van a la ropa sucia después del gym. */
 const SE_LAVA: Categoria[] = ['superior', 'inferior', 'enterizo']
@@ -58,19 +58,31 @@ export async function deshacerUso(usoId: number) {
   })
 }
 
-/** Elimina la prenda y la quita de los outfits; un outfit que queda vacío también se elimina. */
-export async function eliminarPrenda(id: number) {
+/** Elimina prendas y las quita de los outfits; un outfit que queda vacío también se elimina. */
+export async function eliminarPrendas(ids: number[]) {
+  if (ids.length === 0) return
+  const fuera = new Set(ids)
   await db.transaction('rw', db.prendas, db.outfits, async () => {
-    await db.prendas.delete(id)
-    const afectados = await db.outfits.filter((o) => o.prendaIds.includes(id)).toArray()
+    await db.prendas.bulkDelete(ids)
+    const afectados = await db.outfits.filter((o) => o.prendaIds.some((x) => fuera.has(x))).toArray()
     for (const o of afectados) {
-      const prendaIds = o.prendaIds.filter((x) => x !== id)
+      const prendaIds = o.prendaIds.filter((x) => !fuera.has(x))
       if (prendaIds.length) await db.outfits.update(o.id, { prendaIds })
       else await db.outfits.delete(o.id)
     }
   })
 }
 
+export const eliminarPrenda = (id: number) => eliminarPrendas([id])
+
+/** Cambia el estado de varias prendas (por ejemplo, "ya lavé todo" o "marcar para donar"). */
+export async function cambiarEstado(ids: number[], estado: Estado) {
+  await db.transaction('rw', db.prendas, async () => {
+    for (const id of ids) await db.prendas.update(id, { estado })
+  })
+}
+
 export async function marcarTodoLimpio() {
-  await db.prendas.where('estado').equals('lavar').modify({ estado: 'limpia' })
+  const ids = (await db.prendas.where('estado').equals('lavar').primaryKeys()) as number[]
+  await cambiarEstado(ids, 'limpia')
 }

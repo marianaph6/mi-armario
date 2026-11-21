@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { registrarUso } from '../db/acciones'
 import { db, type Categoria, type Ocasion, type Outfit, type Prenda, type RegistroUso } from '../db/schema'
 import { prendasDe } from '../lib/usePrendas'
-import { OCASIONES, categoriaDe } from '../logic/catalogo'
+import { categoriaDe, ocasionDe } from '../logic/catalogo'
 import { clave, queFalta, sugerir } from '../logic/sugerir'
 import { FotoPrenda } from './FotoPrenda'
 
@@ -26,7 +26,7 @@ export function Sugerencia({ ocasion, porId, outfits, usos }: Props) {
   const [registrado, setRegistrado] = useState(false)
   const [cambiando, setCambiando] = useState<{ categoria: Categoria; actual?: number } | null>(null)
 
-  const etiqueta = OCASIONES.find((o) => o.id === ocasion)!.label.toLowerCase()
+  const etiqueta = ocasionDe(ocasion).label.toLowerCase()
   const actuales = prendasDe(piezas, porId)
   const guardado = outfits.find((o) => o.ocasion === ocasion && clave(o.prendaIds) === clave(piezas))
 

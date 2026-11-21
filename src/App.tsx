@@ -4,6 +4,7 @@ import { AntesDeComprar } from './pages/AntesDeComprar'
 import { Ayuda } from './pages/Ayuda'
 import { Closet } from './pages/Closet'
 import { Cuenta } from './pages/Cuenta'
+import { EstadoRopa } from './pages/EstadoRopa'
 import { Historial } from './pages/Historial'
 import { Hoy } from './pages/Hoy'
 import { Mas } from './pages/Mas'
@@ -30,6 +31,7 @@ export default function App() {
       <Route element={<ConNavegacion />}>
         <Route path="/hoy" element={<Hoy />} />
         <Route path="/closet" element={<Closet />} />
+        <Route path="/closet/estado" element={<EstadoRopa />} />
         <Route path="/outfits" element={<Outfits />} />
         <Route path="/mas" element={<Mas />} />
         <Route path="/mas/comprar" element={<AntesDeComprar />} />
