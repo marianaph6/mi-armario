@@ -19,6 +19,9 @@ export interface FilaPrenda extends FilaBase {
   ultimo_uso: string | null
   creada: string
   notas: string | null
+  /** solo se leen: las rutas las escribe el paso de fotos, nunca la fila completa (ver motor.ts) */
+  foto_path?: string | null
+  miniatura_path?: string | null
 }
 
 export interface FilaOutfit extends FilaBase {
@@ -127,6 +130,8 @@ export const aLocal = {
     ultimoUso: fecha(f.ultimo_uso),
     creada: fecha(f.creada) ?? new Date(),
     notas: opcional(f.notas),
+    fotoRuta: opcional(f.foto_path),
+    miniRuta: opcional(f.miniatura_path),
   }),
   outfits: (f: FilaOutfit, t: Traductor): Omit<Outfit, 'id'> => ({
     uid: f.id,
