@@ -1,38 +1,74 @@
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { supabase, useSesion } from '../lib/supabase'
 
 const campo = 'w-full rounded-xl border border-linea bg-crema px-3 py-3 outline-none focus:border-tinta'
 const boton = 'w-full rounded-full bg-acento py-3 font-semibold text-white active:bg-acento-osc disabled:opacity-40'
+const enlace = 'w-full py-2 text-sm font-medium text-acento'
 
-/** Iniciar sesión con un código que llega al correo (sin contraseña y sin enlaces que abran Safari). */
+type Modo = 'entrar' | 'crear' | 'olvide'
+
+/** Adonde vuelven los enlaces de los correos: la app publicada, en la misma dirección. */
+const volverA = () => `${location.origin}${location.pathname}`
+
+const AVISOS: Record<string, string> = {
+  confirmado: 'Tu correo quedó confirmado. Si instalaste la app en la pantalla de inicio, ábrela desde el ícono e inicia sesión ahí.',
+  'enlace-vencido': 'El enlace del correo ya no es válido. Pide uno nuevo.',
+}
+
 export function Cuenta() {
   const sesion = useSesion()
+  const [params, setParams] = useSearchParams()
+  const aviso = params.get('aviso')
+  const [modo, setModo] = useState<Modo>('entrar')
   const [correo, setCorreo] = useState('')
-  const [codigo, setCodigo] = useState('')
-  const [enviado, setEnviado] = useState(false)
+  const [clave, setClave] = useState('')
   const [ocupado, setOcupado] = useState(false)
   const [error, setError] = useState<string>()
+  const [mensaje, setMensaje] = useState<string>()
 
-  async function pedirCodigo(e: FormEvent) {
-    e.preventDefault()
-    if (!supabase) return
-    setOcupado(true)
+  const cambiarModo = (m: Modo) => {
+    setModo(m)
     setError(undefined)
-    const { error } = await supabase.auth.signInWithOtp({ email: correo.trim(), options: { shouldCreateUser: true } })
-    setOcupado(false)
-    if (error) setError(error.status === 429 ? 'Pediste muchos códigos seguidos. Espera unos minutos.' : 'No se pudo enviar el código. Revisa el correo.')
-    else setEnviado(true)
+    setMensaje(undefined)
   }
 
-  async function verificar(e: FormEvent) {
+  async function enviar(e: FormEvent) {
     e.preventDefault()
     if (!supabase) return
     setOcupado(true)
     setError(undefined)
-    const { error } = await supabase.auth.verifyOtp({ email: correo.trim(), token: codigo.trim(), type: 'email' })
+    setMensaje(undefined)
+    const email = correo.trim()
+    if (modo === 'entrar') {
+      const { error } = await supabase.auth.signInWithPassword({ email, password: clave })
+      if (error)
+        setError(error.code === 'email_not_confirmed' ? 'Primero confirma tu correo con el enlace que te enviamos.' : 'Correo o contraseña incorrectos.')
+    } else if (modo === 'crear') {
+      const { data, error } = await supabase.auth.signUp({ email, password: clave, options: { emailRedirectTo: volverA() } })
+      if (error) setError(error.code === 'weak_password' ? 'Usa una contraseña más larga o más difícil.' : 'No se pudo crear la cuenta. Revisa el correo.')
+      else if (!data.session) setMensaje('Te enviamos un correo para confirmar tu cuenta. Ábrelo, toca el enlace y luego vuelve aquí para entrar.')
+    } else {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: volverA() })
+      if (error) setError(error.status === 429 ? 'Pediste muchos correos seguidos. Espera unos minutos.' : 'No se pudo enviar el correo.')
+      else setMensaje('Si ese correo tiene cuenta, te llegará un enlace para elegir una contraseña nueva.')
+    }
     setOcupado(false)
-    if (error) setError('El código no es válido o ya venció. Pide uno nuevo.')
+  }
+
+  async function guardarNuevaClave(e: FormEvent) {
+    e.preventDefault()
+    if (!supabase) return
+    setOcupado(true)
+    setError(undefined)
+    const { error } = await supabase.auth.updateUser({ password: clave })
+    setOcupado(false)
+    if (error) setError('No se pudo cambiar la contraseña. Prueba con otra más larga.')
+    else {
+      setClave('')
+      setParams({}, { replace: true })
+      setMensaje('Contraseña actualizada. Ya puedes usarla para entrar desde la app.')
+    }
   }
 
   return (
@@ -43,9 +79,23 @@ export function Cuenta() {
       <h1 className="mb-1 text-3xl font-bold tracking-tight">Tu cuenta</h1>
       <p className="mb-5 text-suave">Con una cuenta tu clóset queda guardado en la nube y puedes verlo en otros dispositivos.</p>
 
+      {aviso && AVISOS[aviso] && <p className="mb-4 rounded-xl bg-acento-claro p-3 text-sm">{AVISOS[aviso]}</p>}
+      {mensaje && <p className="mb-4 rounded-xl bg-acento-claro p-3 text-sm">{mensaje}</p>}
+
       {!supabase ? (
         <p className="rounded-2xl border border-linea bg-papel p-4 text-sm text-suave">Esta versión de la app no tiene la nube configurada. Todo se guarda solo en este teléfono.</p>
-      ) : sesion === undefined ? null : sesion ? (
+      ) : sesion === undefined ? null : sesion && aviso === 'nueva-clave' ? (
+        <form onSubmit={guardarNuevaClave} className="space-y-3 rounded-2xl border border-linea bg-papel p-4">
+          <label className="block">
+            <span className="mb-1 block font-medium">Contraseña nueva</span>
+            <input type="password" required minLength={8} autoComplete="new-password" value={clave} onChange={(e) => setClave(e.target.value)} className={campo} />
+          </label>
+          {error && <p className="text-sm text-red-700">{error}</p>}
+          <button type="submit" disabled={ocupado} className={boton}>
+            {ocupado ? 'Guardando…' : 'Guardar contraseña'}
+          </button>
+        </form>
+      ) : sesion ? (
         <section className="space-y-4 rounded-2xl border border-linea bg-papel p-4">
           <div>
             <p className="text-sm text-suave">Sesión iniciada como</p>
@@ -58,10 +108,11 @@ export function Cuenta() {
             Cerrar sesión
           </button>
         </section>
-      ) : !enviado ? (
-        <form onSubmit={pedirCodigo} className="space-y-3 rounded-2xl border border-linea bg-papel p-4">
+      ) : (
+        <form onSubmit={enviar} className="space-y-3 rounded-2xl border border-linea bg-papel p-4">
+          <h2 className="font-semibold">{modo === 'entrar' ? 'Iniciar sesión' : modo === 'crear' ? 'Crear cuenta' : 'Recuperar contraseña'}</h2>
           <label className="block">
-            <span className="mb-1 block font-medium">Tu correo</span>
+            <span className="mb-1 block text-sm font-medium">Correo</span>
             <input
               type="email"
               required
@@ -73,43 +124,39 @@ export function Cuenta() {
               className={campo}
             />
           </label>
-          <p className="text-sm text-suave">Te enviaremos un código para entrar. No necesitas contraseña.</p>
+          {modo !== 'olvide' && (
+            <label className="block">
+              <span className="mb-1 block text-sm font-medium">Contraseña</span>
+              <input
+                type="password"
+                required
+                minLength={modo === 'crear' ? 8 : undefined}
+                autoComplete={modo === 'crear' ? 'new-password' : 'current-password'}
+                value={clave}
+                onChange={(e) => setClave(e.target.value)}
+                className={campo}
+              />
+              {modo === 'crear' && <span className="mt-1 block text-xs text-suave">Mínimo 8 caracteres. El iPhone puede sugerirte una y guardarla.</span>}
+            </label>
+          )}
           {error && <p className="text-sm text-red-700">{error}</p>}
           <button type="submit" disabled={ocupado} className={boton}>
-            {ocupado ? 'Enviando…' : 'Enviarme el código'}
+            {ocupado ? 'Un momento…' : modo === 'entrar' ? 'Entrar' : modo === 'crear' ? 'Crear cuenta' : 'Enviarme el enlace'}
           </button>
-        </form>
-      ) : (
-        <form onSubmit={verificar} className="space-y-3 rounded-2xl border border-linea bg-papel p-4">
-          <p className="text-sm">
-            Escribe el código que llegó a <span className="font-semibold break-all">{correo}</span>. Revisa también la carpeta de spam.
-          </p>
-          <input
-            required
-            autoComplete="one-time-code"
-            inputMode="numeric"
-            pattern="[0-9]{6,8}"
-            maxLength={8}
-            value={codigo}
-            onChange={(e) => setCodigo(e.target.value.replace(/\D/g, ''))}
-            placeholder="123456"
-            className={`${campo} text-center text-2xl tracking-[0.3em]`}
-          />
-          {error && <p className="text-sm text-red-700">{error}</p>}
-          <button type="submit" disabled={ocupado || codigo.length < 6} className={boton}>
-            {ocupado ? 'Verificando…' : 'Entrar'}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setEnviado(false)
-              setCodigo('')
-              setError(undefined)
-            }}
-            className="w-full py-2 text-sm font-medium text-acento"
-          >
-            Usar otro correo o pedir un código nuevo
-          </button>
+          {modo === 'entrar' ? (
+            <>
+              <button type="button" onClick={() => cambiarModo('crear')} className={enlace}>
+                ¿No tienes cuenta? Créala
+              </button>
+              <button type="button" onClick={() => cambiarModo('olvide')} className={`${enlace} -mt-2`}>
+                Olvidé mi contraseña
+              </button>
+            </>
+          ) : (
+            <button type="button" onClick={() => cambiarModo('entrar')} className={enlace}>
+              Ya tengo cuenta: iniciar sesión
+            </button>
+          )}
         </form>
       )}
     </>

@@ -79,6 +79,9 @@ declare t text;
 begin
   foreach t in array array['prendas', 'outfits', 'usos', 'deseos'] loop
     execute format('alter table public.%I enable row level security', t);
+    -- Solo usuarios con sesión llegan a las tablas por la API; sin sesión (anon) no hay acceso.
+    execute format('revoke all on public.%I from anon', t);
+    execute format('grant select, insert, update, delete on public.%I to authenticated', t);
     execute format('create index if not exists %I on public.%I (user_id, actualizado)', t || '_sync_idx', t);
     execute format('drop trigger if exists marcar_actualizado on public.%I', t);
     execute format('create trigger marcar_actualizado before insert or update on public.%I
