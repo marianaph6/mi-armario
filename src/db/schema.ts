@@ -19,6 +19,9 @@ export interface Prenda extends Sincronizable {
   /** puede faltar en una prenda que llegó de la nube y aún no baja su foto */
   foto?: Blob
   miniatura?: Blob
+  /** dónde están las fotos en la nube; vacío si la foto actual todavía no se sube */
+  fotoRuta?: string
+  miniRuta?: string
   nombre?: string
   categoria: Categoria
   subtipo?: string
@@ -161,6 +164,8 @@ for (const t of TABLAS) {
   tabla.hook('updating', (cambios) => {
     if (aplicandoNube || 'cambio' in cambios) return
     avisar()
+    // foto nueva: hay que volver a subirla
+    if ('foto' in cambios || 'miniatura' in cambios) return { cambio: Date.now(), fotoRuta: undefined, miniRuta: undefined }
     return { cambio: Date.now() }
   })
   tabla.hook('deleting', (_clave, obj, tx) => {

@@ -77,7 +77,7 @@ export async function restaurarRespaldo(archivo: Blob): Promise<{ prendas: numbe
   for (const p of datos.prendas) {
     const foto = await imagen(ruta.prenda(p.id))
     const miniatura = (await imagen(ruta.mini(p.id))) ?? foto
-    prendas.push({ ...p, foto, miniatura, creada: fecha(p.creada) ?? new Date(), ultimoUso: fecha(p.ultimoUso) })
+    prendas.push({ ...p, foto, miniatura, fotoRuta: undefined, miniRuta: undefined, creada: fecha(p.creada) ?? new Date(), ultimoUso: fecha(p.ultimoUso) })
   }
   const outfits: Outfit[] = []
   for (const { conFoto, ...o } of datos.outfits) {

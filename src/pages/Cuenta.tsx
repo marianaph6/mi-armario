@@ -169,6 +169,8 @@ export function Cuenta() {
 async function contarPendientes() {
   let n = await db.borrados.count()
   for (const t of TABLAS) n += await db.table<Sincronizable>(t).filter((r) => (r.cambio ?? 0) > 0).count()
+  // fotos que todavía no están en la nube
+  n += await db.prendas.filter((p) => !!p.foto && !p.fotoRuta && !((p.cambio ?? 0) > 0)).count()
   return n
 }
 
@@ -191,7 +193,7 @@ function EstadoNube() {
         <span aria-hidden>{sync.fase === 'error' ? '⚠️' : sync.fase === 'sincronizando' || pendientes > 0 ? '🔄' : '☁️'}</span>
         <span>{texto}</span>
       </p>
-      <p className="text-suave">Tus prendas, outfits, historial y lista de deseos se sincronizan solos. Las fotos se suben en la próxima actualización.</p>
+      <p className="text-suave">Tus prendas con sus fotos, outfits, historial y lista de deseos se sincronizan solos.</p>
       <button type="button" disabled={sync.fase === 'sincronizando'} onClick={() => programarSync(0)} className="font-semibold text-acento disabled:opacity-40">
         Sincronizar ahora
       </button>

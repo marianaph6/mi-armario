@@ -30,6 +30,8 @@ export function PrendaForm() {
 
   const [cargando, setCargando] = useState(editId !== undefined)
   const [fotos, setFotos] = useState<{ foto: Blob; miniatura: Blob } | null>(null)
+  /** al editar, la foto solo se guarda (y se vuelve a subir a la nube) si se eligió otra */
+  const [fotoNueva, setFotoNueva] = useState(false)
   const [procesando, setProcesando] = useState(false)
   const [error, setError] = useState<string>()
   const [categoria, setCategoria] = useState<Categoria | null>(null)
@@ -72,6 +74,7 @@ export function PrendaForm() {
     setError(undefined)
     try {
       setFotos(await prepararFoto(archivo))
+      setFotoNueva(true)
     } catch {
       setError('No se pudo leer esa foto. Intenta con otra.')
     } finally {
@@ -85,7 +88,7 @@ export function PrendaForm() {
   async function guardar(yOtra: boolean) {
     if (!fotos || !categoria || falta) return
     const datos = {
-      ...fotos,
+      ...(fotoNueva || editId === undefined ? fotos : {}),
       categoria,
       subtipo,
       colores,

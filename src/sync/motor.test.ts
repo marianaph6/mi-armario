@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { db, type Prenda, type TablaSync } from '../db/schema'
+import { db, sinMarcarCambios, type Prenda, type TablaSync } from '../db/schema'
 import type { Fila } from './mapeo'
 import { sincronizarCon, type Cursor, type FilaNube, type Nube } from './motor'
 
@@ -21,6 +21,24 @@ class NubeFalsa implements Nube {
   async subir(t: TablaSync, filas: Fila[]) {
     const s = this.sello()
     for (const f of filas) this.tabla(t).set(f.id, { ...this.tabla(t).get(f.id), ...f, actualizado: s } as FilaNube)
+  }
+  archivos = new Map<string, Blob>()
+  async subirFoto(ruta: string, foto: Blob) {
+    this.archivos.set(ruta, foto)
+  }
+  async fijarFotos(uid: string, fotoRuta: string, miniRuta: string) {
+    const f = this.tabla('prendas').get(uid)
+    if (!f) return false
+    this.tabla('prendas').set(uid, { ...f, foto_path: fotoRuta, miniatura_path: miniRuta, actualizado: this.sello() } as FilaNube)
+    return true
+  }
+  async bajarFoto(ruta: string) {
+    const f = this.archivos.get(ruta)
+    if (!f) throw new Error(`no existe ${ruta}`)
+    return f
+  }
+  async limpiarFotos(carpeta: string, conservar: string[]) {
+    for (const r of [...this.archivos.keys()]) if (r.startsWith(`${carpeta}/`) && !conservar.includes(r)) this.archivos.delete(r)
   }
   async bajar(t: TablaSync, desde: Cursor | undefined, limite: number) {
     const despues = (f: FilaNube) => !desde || f.actualizado > desde.actualizado || (f.actualizado === desde.actualizado && f.id > desde.id)
@@ -166,5 +184,102 @@ describe('sincronizarCon', () => {
     await otroDispositivo()
     await sincronizarCon(nube, 'u1', 5)
     expect(await db.deseos.count()).toBe(23)
+  })
+
+  describe('fotos', () => {
+    const fotos = (texto: string) => ({ foto: new Blob([`${texto} grande`], { type: 'image/jpeg' }), miniatura: new Blob([`${texto} mini`], { type: 'image/jpeg' }) })
+    const deLaPrenda = (uid: string) => [...nube.archivos.keys()].filter((r) => r.startsWith(`u1/prendas/${uid}/`)).sort()
+
+    it('sube la foto y la fila guarda dónde quedó', async () => {
+      const id = await db.prendas.add({ ...prenda('Top'), ...fotos('top') })
+      await sincronizarCon(nube, 'u1')
+      const p = (await db.prendas.get(id))!
+      const fila = nube.tabla('prendas').get(p.uid!)!
+      expect('foto_path' in fila && fila.foto_path).toBe(p.fotoRuta)
+      expect(deLaPrenda(p.uid!)).toEqual([p.fotoRuta, p.miniRuta].sort())
+      expect(p.cambio).toBe(0)
+    })
+
+    it('en otro dispositivo baja las fotos', async () => {
+      await db.prendas.add({ ...prenda('Top'), ...fotos('top') })
+      await sincronizarCon(nube, 'u1')
+      await otroDispositivo()
+      await sincronizarCon(nube, 'u1')
+      const [p] = await db.prendas.toArray()
+      expect(await p.miniatura!.text()).toBe('top mini')
+      expect(await p.foto!.text()).toBe('top grande')
+      expect(p.cambio).toBe(0)
+    })
+
+    it('al cambiar la foto sube la nueva, borra la vieja y los otros dispositivos la reemplazan', async () => {
+      const id = await db.prendas.add({ ...prenda('Top'), ...fotos('vieja') })
+      await sincronizarCon(nube, 'u1')
+      const uid = (await db.prendas.get(id))!.uid!
+      const rutaVieja = (await db.prendas.get(id))!.fotoRuta
+      // el otro dispositivo ya la tenía
+      const copia = await db.prendas.get(id)
+
+      await db.prendas.update(id, fotos('nueva'))
+      expect((await db.prendas.get(id))!.fotoRuta).toBeUndefined()
+      await sincronizarCon(nube, 'u1')
+      const nueva = (await db.prendas.get(id))!
+      expect(nueva.fotoRuta).not.toBe(rutaVieja)
+      expect(deLaPrenda(uid)).toEqual([nueva.fotoRuta, nueva.miniRuta].sort())
+
+      await otroDispositivo()
+      await sinMarcarCambios(() => db.prendas.add({ ...copia!, cambio: 0 })) // la versión vieja, con su foto vieja
+      await sincronizarCon(nube, 'u1')
+      expect(await (await db.prendas.get(id))!.foto!.text()).toBe('nueva grande')
+    })
+
+    it('editar el nombre en un dispositivo con la foto vieja no borra la foto nueva', async () => {
+      const id = await db.prendas.add({ ...prenda('Top'), ...fotos('vieja') })
+      await sincronizarCon(nube, 'u1')
+      const vieja = (await db.prendas.get(id))!
+      await db.prendas.update(id, fotos('nueva'))
+      await sincronizarCon(nube, 'u1')
+      const rutaNueva = (await db.prendas.get(id))!.fotoRuta
+
+      // otro dispositivo, que aún tiene la foto vieja, cambia el nombre antes de enterarse
+      await otroDispositivo()
+      await sinMarcarCambios(() => db.prendas.add({ ...vieja, cambio: 0 }))
+      await db.prendas.update(id, { nombre: 'Top de correr' })
+      await sincronizarCon(nube, 'u1')
+
+      const fila = nube.tabla('prendas').get(vieja.uid!)!
+      expect(fila).toMatchObject({ nombre: 'Top de correr', foto_path: rutaNueva })
+      expect(nube.archivos.has(rutaNueva!)).toBe(true)
+      expect(await (await db.prendas.get(id))!.foto!.text()).toBe('nueva grande')
+    })
+
+    it('editar otros datos no vuelve a subir la foto', async () => {
+      const id = await db.prendas.add({ ...prenda('Top'), ...fotos('top') })
+      await sincronizarCon(nube, 'u1')
+      const ruta = (await db.prendas.get(id))!.fotoRuta
+      await db.prendas.update(id, { nombre: 'Top negro' })
+      await sincronizarCon(nube, 'u1')
+      expect((await db.prendas.get(id))!.fotoRuta).toBe(ruta)
+    })
+
+    it('al eliminar la prenda borra sus fotos de la nube', async () => {
+      const id = await db.prendas.add({ ...prenda('Top'), ...fotos('top') })
+      await sincronizarCon(nube, 'u1')
+      const uid = (await db.prendas.get(id))!.uid!
+      await db.prendas.delete(id)
+      await new Promise((r) => setTimeout(r, 0))
+      await sincronizarCon(nube, 'u1')
+      expect(deLaPrenda(uid)).toEqual([])
+    })
+
+    it('sube las fotos de prendas que ya estaban sincronizadas sin foto (fase 2)', async () => {
+      const id = await db.prendas.add({ ...prenda('Top'), ...fotos('top') })
+      await sincronizarCon(nube, 'u1')
+      // como quedó tras la fase 2: sincronizada pero sin ruta de foto
+      await db.prendas.update(id, { fotoRuta: undefined, miniRuta: undefined, cambio: 0 })
+      nube.archivos.clear()
+      await sincronizarCon(nube, 'u1')
+      expect((await db.prendas.get(id))!.fotoRuta).toBeTruthy()
+      expect(nube.archivos.size).toBe(2)
+    })
   })
 })
