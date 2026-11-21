@@ -4,6 +4,7 @@ import { HashRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
 import { supabase } from './lib/supabase'
+import { iniciarSync } from './sync/sincronizacion'
 
 // Pide al navegador que no borre los datos guardados (fotos y prendas).
 navigator.storage?.persist?.().catch(() => {})
@@ -21,6 +22,8 @@ async function leerEnlaceDeCorreo() {
   const aviso = hash.has('error_description') ? 'enlace-vencido' : tipo === 'recovery' ? 'nueva-clave' : 'confirmado'
   history.replaceState(null, '', `${location.pathname}#/mas/cuenta?aviso=${aviso}`)
 }
+
+iniciarSync()
 
 leerEnlaceDeCorreo().finally(() =>
   createRoot(document.getElementById('root')!).render(

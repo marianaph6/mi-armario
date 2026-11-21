@@ -50,7 +50,7 @@ export function PrendaForm() {
     db.prendas.get(editId).then((p) => {
       if (!vigente) return
       if (!p) return navigate('/closet', { replace: true })
-      setFotos({ foto: p.foto, miniatura: p.miniatura })
+      if (p.foto && p.miniatura) setFotos({ foto: p.foto, miniatura: p.miniatura })
       setCategoria(p.categoria)
       setSubtipo(p.subtipo)
       setColores(p.colores)
