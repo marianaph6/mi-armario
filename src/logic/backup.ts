@@ -1,5 +1,5 @@
 import JSZip from 'jszip'
-import { db, type Deseo, type Outfit, type Prenda, type RegistroUso } from '../db/schema'
+import { TABLAS, db, type Deseo, type Outfit, type Prenda, type RegistroUso, type Sincronizable } from '../db/schema'
 
 const APP = 'mi-armario'
 const VERSION = 1
@@ -33,8 +33,8 @@ export async function crearRespaldo(): Promise<File> {
     version: VERSION,
     exportado: new Date().toISOString(),
     prendas: prendas.map(({ foto, miniatura, ...resto }) => {
-      zip.file(ruta.prenda(resto.id), foto)
-      zip.file(ruta.mini(resto.id), miniatura)
+      if (foto) zip.file(ruta.prenda(resto.id), foto)
+      if (miniatura) zip.file(ruta.mini(resto.id), miniatura)
       return resto
     }),
     outfits: outfits.map(({ fotoLook, ...resto }) => {
@@ -77,7 +77,6 @@ export async function restaurarRespaldo(archivo: Blob): Promise<{ prendas: numbe
   for (const p of datos.prendas) {
     const foto = await imagen(ruta.prenda(p.id))
     const miniatura = (await imagen(ruta.mini(p.id))) ?? foto
-    if (!foto || !miniatura) throw new Error('La copia está incompleta: faltan fotos.')
     prendas.push({ ...p, foto, miniatura, creada: fecha(p.creada) ?? new Date(), ultimoUso: fecha(p.ultimoUso) })
   }
   const outfits: Outfit[] = []
@@ -88,7 +87,12 @@ export async function restaurarRespaldo(archivo: Blob): Promise<{ prendas: numbe
   const deseos: Deseo[] = []
   for (const { conFoto, ...d } of datos.deseos ?? []) deseos.push({ ...d, foto: conFoto ? await imagen(ruta.deseo(d.id)) : undefined })
 
-  await db.transaction('rw', db.prendas, db.outfits, db.usos, db.deseos, async () => {
+  await db.transaction('rw', ['prendas', 'outfits', 'usos', 'deseos', 'borrados'], async () => {
+    // lo que se reemplaza también se borra en la nube (si la copia trae los mismos registros, vuelven a subir)
+    for (const t of TABLAS) {
+      const uids = (await db.table<Sincronizable>(t).toArray()).flatMap((r) => (r.uid ? [r.uid] : []))
+      await db.borrados.bulkPut(uids.map((uid) => ({ tabla: t, uid })))
+    }
     await Promise.all([db.prendas.clear(), db.outfits.clear(), db.usos.clear(), db.deseos.clear()])
     await db.prendas.bulkAdd(prendas)
     await db.outfits.bulkAdd(outfits)
